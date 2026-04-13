@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "439303536524",
+    "project_id": "ashhabgymweb",
+    "storage_bucket": "ashhabgymweb.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:439303536524:android:db2e9ac97a5cbaba7fa0a9",
+        "android_client_info": {
+          "package_name": "com.zaidjoapps.ashhabgym"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDegJ3s4sXwqrP9P9wgT6gdwlGv4hbd-1M"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
