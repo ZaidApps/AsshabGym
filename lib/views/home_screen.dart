@@ -2,8 +2,49 @@ import 'package:flutter/material.dart';
 
 import 'qr_scan_screen.dart';
 
-class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key});
+class HomeScreen extends StatefulWidget {
+  final bool autoTriggerScan;
+  final bool autoTriggerCheckIn;
+
+  const HomeScreen({super.key, this.autoTriggerScan = false, this.autoTriggerCheckIn = false});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  @override
+  void initState() {
+    super.initState();
+    if (widget.autoTriggerScan) {
+      // Auto-trigger scan after a short delay
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _triggerAutoScan();
+      });
+    } else if (widget.autoTriggerCheckIn) {
+      // Auto-trigger check-in directly
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _triggerAutoCheckIn();
+      });
+    }
+  }
+
+  void _triggerAutoScan() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => const QrScanScreen(),
+      ),
+    );
+  }
+
+  void _triggerAutoCheckIn() {
+    // This will trigger the existing scanner logic to detect device and check-in automatically
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => const QrScanScreen(),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
