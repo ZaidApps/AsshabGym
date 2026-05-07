@@ -16,29 +16,6 @@ class _GymAppState extends State<GymApp> {
   @override
   void initState() {
     super.initState();
-    _checkForAutoCheckIn();
-  }
-
-  Future<void> _checkForAutoCheckIn() async {
-    // Wait a bit for the app to fully load
-    await Future.delayed(const Duration(seconds: 1));
-    
-    if (_qrCheckInService.hasCheckInParameters()) {
-      // Process automatic check-in
-      final result = await _qrCheckInService.processAutoCheckIn();
-      
-      if (mounted && result['autoCheckIn'] == true) {
-        // Navigate to home screen and trigger automatic check-in
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (context) => const HomeScreen(autoTriggerCheckIn: true),
-          ),
-        );
-      } else if (mounted) {
-        // Show error dialog
-        _qrCheckInService.showCheckInResult(context, result);
-      }
-    }
   }
 
   @override
@@ -49,7 +26,24 @@ class _GymAppState extends State<GymApp> {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blueGrey),
         useMaterial3: true,
       ),
-      home: const HomeScreen(),
+      home: FutureBuilder<bool>(
+        future: _shouldAutoCheckIn(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Scaffold(
+              body: Center(child: CircularProgressIndicator()),
+            );
+          }
+          
+          final autoCheckIn = snapshot.data ?? false;
+          return HomeScreen(autoTriggerCheckIn: autoCheckIn);
+        },
+      ),
     );
+  }
+
+  Future<bool> _shouldAutoCheckIn() async {
+    // Check if URL contains scan parameters
+    return _qrCheckInService.hasCheckInParameters();
   }
 }

@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:device_info_plus/device_info_plus.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
@@ -33,6 +34,7 @@ class CheckInController {
       : _firestore = firestore ?? FirebaseFirestore.instance;
 
   final FirebaseFirestore _firestore;
+  static String? _cachedDeviceType;
 
   static const String expectedQrValue = 'GYM_CHECKIN';
   static const String membersCollection = 'members';
@@ -69,10 +71,13 @@ class CheckInController {
           'created_at': FieldValue.serverTimestamp(),
         });
 
-        await _firestore.collection(pendingRegistrationsCollection).add({
+        // Initialize device type info
+      await _deviceType();
+      
+      await _firestore.collection(pendingRegistrationsCollection).add({
           'device_id': rawDeviceId,
           'member_doc_id': memberDocId,
-          'platform': _deviceType(),
+          'platform': _deviceTypeSync(),
           'created_at': FieldValue.serverTimestamp(),
           'acknowledged': false,
         });
@@ -149,6 +154,9 @@ class CheckInController {
         );
       }
 
+      // Initialize device type info if not already done
+      if (_cachedDeviceType == null) await _deviceType();
+      
       await dailyCheckinRef.set({
         'device_id': rawDeviceId,
         'member_doc_id': memberDocId,
@@ -156,7 +164,7 @@ class CheckInController {
         'checkin_date': todayString,
         'checkin_time': timeFormatter.format(now),
         'timestamp': FieldValue.serverTimestamp(),
-        'device_type': _deviceType(),
+        'device_type': _deviceTypeSync(),
       });
 
       return CheckInResult(
@@ -209,21 +217,129 @@ class CheckInController {
     }
   }
 
-  String _deviceType() {
-    if (kIsWeb) return 'web';
+  Future<String> _deviceType() async {
+    print('DEBUG: _deviceType() called');
+    if (_cachedDeviceType != null) {
+      print('DEBUG: Returning cached device type: $_cachedDeviceType');
+      return _cachedDeviceType!;
+    }
+    
+    if (kIsWeb) {
+      _cachedDeviceType = 'web';
+      print('DEBUG: Set device type to web');
+      return _cachedDeviceType!;
+    }
+    
+    print('DEBUG: Platform: ${defaultTargetPlatform}');
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
-        return 'android';
+        _cachedDeviceType = await _getAndroidDeviceInfo();
+        print('DEBUG: Set device type to Android result: $_cachedDeviceType');
+        return _cachedDeviceType!;
       case TargetPlatform.iOS:
-        return 'ios';
+        _cachedDeviceType = await _getIOSDeviceInfo();
+        print('DEBUG: Set device type to iOS result: $_cachedDeviceType');
+        return _cachedDeviceType!;
       case TargetPlatform.macOS:
-        return 'macos';
+        _cachedDeviceType = 'macos';
+        print('DEBUG: Set device type to macOS');
+        return _cachedDeviceType!;
       case TargetPlatform.windows:
-        return 'windows';
+        _cachedDeviceType = 'windows';
+        print('DEBUG: Set device type to Windows');
+        return _cachedDeviceType!;
       case TargetPlatform.linux:
-        return 'linux';
+        _cachedDeviceType = 'linux';
+        print('DEBUG: Set device type to Linux');
+        return _cachedDeviceType!;
       case TargetPlatform.fuchsia:
-        return 'fuchsia';
+        _cachedDeviceType = 'fuchsia';
+        print('DEBUG: Set device type to Fuchsia');
+        return _cachedDeviceType!;
+    }
+  }
+
+  String _deviceTypeSync() {
+    return _cachedDeviceType ?? 'unknown';
+  }
+
+  Future<String> _getAndroidDeviceInfo() async {
+    try {
+      final androidInfo = await DeviceInfoPlugin().androidInfo;
+      final brand = androidInfo.brand ?? 'Unknown';
+      final model = androidInfo.model ?? 'Unknown';
+      final product = androidInfo.product ?? 'Unknown';
+      
+      print('DEBUG: Android Device Info - Brand: $brand, Model: $model, Product: $product');
+      
+      // Format: Samsung Galaxy Note 20 (SM-N975F)
+      if (brand.toLowerCase() == 'samsung') {
+        final deviceInfo = '$brand $model ($product)';
+        print('DEBUG: Formatted Samsung device: $deviceInfo');
+        return deviceInfo;
+      }
+      
+      // Format: Google Pixel 7 (redfin)
+      if (brand.toLowerCase() == 'google') {
+        final deviceInfo = '$brand $model ($product)';
+        print('DEBUG: Formatted Google device: $deviceInfo');
+        return deviceInfo;
+      }
+      
+      // Format: OnePlus 9 (LE2123)
+      if (brand.toLowerCase() == 'oneplus') {
+        final deviceInfo = '$brand $model ($product)';
+        print('DEBUG: Formatted OnePlus device: $deviceInfo');
+        return deviceInfo;
+      }
+      
+      // Format: Xiaomi Redmi Note 10 (sweet)
+      if (brand.toLowerCase() == 'xiaomi') {
+        final deviceInfo = '$brand $model ($product)';
+        print('DEBUG: Formatted Xiaomi device: $deviceInfo');
+        return deviceInfo;
+      }
+      
+      // Default format for other Android devices
+      final deviceInfo = '$brand $model';
+      print('DEBUG: Formatted default Android device: $deviceInfo');
+      return deviceInfo;
+    } catch (e) {
+      print('DEBUG: Error getting Android device info: $e');
+      return 'android';
+    }
+  }
+
+  Future<String> _getIOSDeviceInfo() async {
+    try {
+      final iosInfo = await DeviceInfoPlugin().iosInfo;
+      final name = iosInfo.name ?? 'Unknown';
+      final model = iosInfo.model ?? 'Unknown';
+      final localizedModel = iosInfo.localizedModel ?? 'Unknown';
+      
+      print('DEBUG: iOS Device Info - Name: $name, Model: $model, Localized: $localizedModel');
+      
+      // Format: iPhone 13 (iPhone14,3)
+      if (name.contains('iPhone')) {
+        final deviceInfo = '$name $model';
+        print('DEBUG: Formatted iPhone device: $deviceInfo');
+        return deviceInfo;
+      }
+      
+      // Format: iPad Pro 12.9-inch (iPad13,8)
+      if (name.contains('iPad')) {
+        final deviceInfo = '$name $model';
+        print('DEBUG: Formatted iPad device: $deviceInfo');
+        return deviceInfo;
+      }
+      
+      // Format for other iOS devices
+      final deviceInfo = '$name $localizedModel';
+      print('DEBUG: Formatted default iOS device: $deviceInfo');
+      return deviceInfo;
+    } catch (e) {
+      print('DEBUG: Error getting iOS device info: $e');
+      return 'ios';
     }
   }
 }

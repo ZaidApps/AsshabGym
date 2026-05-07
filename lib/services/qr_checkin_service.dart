@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:html' as html;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:url_strategy/url_strategy.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -15,9 +17,85 @@ class QRCheckInService {
   // Check if URL contains scan parameters
   bool hasCheckInParameters() {
     try {
-      final uri = Uri.base;
-      return uri.queryParameters['action'] == 'scan';
+      Map<String, String>? params;
+      
+      if (kIsWeb) {
+        // For web, try multiple methods to get URL parameters
+        
+        // Method 1: Try window.location.href
+        try {
+          final currentUrl = html.window.location.href;
+          print('DEBUG: Method 1 - Window location href: $currentUrl');
+          final uri = Uri.parse(currentUrl);
+          params = uri.queryParameters;
+          print('DEBUG: Method 1 - Parsed query parameters: $params');
+        } catch (e) {
+          print('DEBUG: Method 1 - Error using window.location: $e');
+        }
+        
+        // Method 2: Try window.location.search (more reliable for query params)
+        if (params == null || params.isEmpty) {
+          try {
+            final search = html.window.location.search;
+            print('DEBUG: Method 2 - Window location search: $search');
+            if (search != null && search.isNotEmpty) {
+              if (search.startsWith('?')) {
+                final queryString = search.substring(1);
+                params = Uri.splitQueryString(queryString);
+              } else {
+                params = Uri.splitQueryString(search);
+              }
+              print('DEBUG: Method 2 - Parsed search parameters: $params');
+            }
+          } catch (e) {
+            print('DEBUG: Method 2 - Error using window.location.search: $e');
+          }
+        }
+        
+        // Method 3: Try to get from URL hash (for hash URL strategy)
+        if (params == null || params.isEmpty) {
+          try {
+            final hash = html.window.location.hash;
+            print('DEBUG: Method 3 - Window location hash: $hash');
+            if (hash.isNotEmpty && hash.contains('?')) {
+              final hashParts = hash.split('?');
+              if (hashParts.length > 1) {
+                final queryString = hashParts[1];
+                params = Uri.splitQueryString(queryString);
+                print('DEBUG: Method 3 - Parsed hash parameters: $params');
+              }
+            }
+          } catch (e) {
+            print('DEBUG: Method 3 - Error using window.location.hash: $e');
+          }
+        }
+        
+        // Method 4: Try to check if the URL contains the action parameter directly
+        if (params == null || params.isEmpty) {
+          try {
+            final currentUrl = html.window.location.href;
+            print('DEBUG: Method 4 - Checking URL directly: $currentUrl');
+            if (currentUrl.contains('action=scan')) {
+              print('DEBUG: Method 4 - Found action=scan in URL');
+              params = {'action': 'scan'};
+            }
+          } catch (e) {
+            print('DEBUG: Method 4 - Error checking URL directly: $e');
+          }
+        }
+      } else {
+        // For mobile, use Uri.base
+        final uri = Uri.base;
+        params = uri.queryParameters;
+        print('DEBUG: Mobile query parameters: $params');
+      }
+      
+      final hasScan = params?['action'] == 'scan';
+      print('DEBUG: Final parameters: $params');
+      print('DEBUG: Has scan parameter: $hasScan');
+      return hasScan;
     } catch (e) {
+      print('DEBUG: Error checking URL parameters: $e');
       return false;
     }
   }
